@@ -1,91 +1,44 @@
-const express = require('express');
-const request = require('request');
-const app = express();
+const axios = require('axios');
+const cheerio = require('cheerio');
 
-// Function to create social media share links
-function createShareLinks(title, author, description) {
-	const encodedTitle = encodeURIComponent(title);
-	const encodedAuthor = encodeURIComponent(author);
-	const encodedDescription = encodeURIComponent(description);
+const url =
+	'https://www.amazon.com/Dragons-Digital-Age-Unilateral-Cryptocurrency/dp/195265100X';
 
-	return {
-		twitter: `https://twitter.com/intent/tweet?text=${encodedTitle} by ${encodedAuthor}: ${encodedDescription}`,
-		facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-			'https://example.com/book'
-		)}&quote=${encodedTitle} by ${encodedAuthor}: ${encodedDescription}`,
-		linkedin: `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(
-			'https://example.com/book'
-		)}&title=${encodedTitle}&summary=${encodedDescription}`,
-	};
-}
+axios
+	.get(url)
+	.then((response) => {
+		const $ = cheerio.load(response.data);
 
-app.get('/dragon', (req, res) => {
-	const query = 'dragon of the digital age';
-	const url = `https://www.googleapis.com/books/v1/volumes?q=${query}`;
+		// Extract book title
+		const title = $('#productTitle').text().trim();
 
-	request(url, (error, response, body) => {
-		if (!error && response.statusCode === 200) {
-			const bookData = JSON.parse(body);
-			const bookTitle = bookData.items[0].volumeInfo.title;
-			const bookAuthor = bookData.items[0].volumeInfo.authors[0];
-			const bookDescription = bookData.items[0].volumeInfo.description;
+		// Extract author name
+		const author = $('.contributorNameID').first().text().trim();
 
-			const shareLinks = createShareLinks(
-				bookTitle,
-				bookAuthor,
-				bookDescription
-			);
+		// Extract book description
+		const description = $('#bookDescription_feature_div noscript')
+			.text()
+			.trim();
 
-			res.send(`
-        <h1>${bookTitle}</h1>
-        <h2>by ${bookAuthor}</h2>
-        <p>${bookDescription}</p>
-        <ul>
-          <li><a href="${shareLinks.twitter}">Share on Twitter</a></li>
-          <li><a href="${shareLinks.facebook}">Share on Facebook</a></li>
-          <li><a href="${shareLinks.linkedin}">Share on LinkedIn</a></li>
-        </ul>
-      `);
-		} else {
-			res.status(401).send('error not found');
-		}
+		// Extract book cover image URL
+		const coverImageUrl = $('#imgBlkFront').attr('src');
+
+		// Extract book details (publication date, publisher, language, etc.)
+		const detailsTable = $('#productDetailsTable').first();
+		const details = {};
+		$('tr', detailsTable).each((i, el) => {
+			const key = $(el).find('td').first().text().trim();
+			const value = $(el).find('td').last().text().trim();
+			details[key] = value;
+		});
+
+		// Log the extracted information
+		console.log('Title:', title);
+		console.log('Author:', author);
+		console.log('Description:', description);
+		console.log('Cover Image URL:', coverImageUrl);
+		console.log('Details:', details);
+	})
+	.catch((error) => {
+		console.log(error);
 	});
-});
-app.get('/digital', (req, res) => {
-	const query = 'digital exchequer';
-	const url = `https://www.googleapis.com/books/v1/volumes?q=${query}`;
-
-	request(url, (error, response, body) => {
-		if (!error && response.statusCode === 200) {
-			const bookData = JSON.parse(body);
-			const bookTitle = bookData.items[0].volumeInfo.title;
-			const bookAuthor = bookData.items[0].volumeInfo.authors[0];
-			const bookDescription = bookData.items[0].volumeInfo.description;
-
-			// Create social media share links
-			const shareLinks = createShareLinks(
-				bookTitle,
-				bookAuthor,
-				bookDescription
-			);
-
-			res.send(`
-          <h1>${bookTitle}</h1>
-          <h2>by ${bookAuthor}</h2>
-          <p>${bookDescription}</p>
-          <ul>
-            <li><a href="${shareLinks.twitter}">Share on Twitter</a></li>
-            <li><a href="${shareLinks.facebook}">Share on Facebook</a></li>
-            <li><a href="${shareLinks.linkedin}">Share on LinkedIn</a></li>
-          </ul>
-        `);
-		} else {
-			res.status(401).send('error not found');
-		}
-	});
-});
-const port = 8000;
-
-app.listen(port, () => {
-	console.log(`Server running on port ${port}`);
-});
