@@ -47,7 +47,7 @@ app.get('/dragon', (req, res) => {
         </ul>
       `);
 		} else {
-			res.send('Error retrieving book data');
+			res.status(401).send('error not found');
 		}
 	});
 });
@@ -80,7 +80,7 @@ app.get('/digital', (req, res) => {
           </ul>
         `);
 		} else {
-			res.send('Error retrieving book data');
+			res.status(401).send('error not found');
 		}
 	});
 });
